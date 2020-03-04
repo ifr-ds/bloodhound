@@ -102,13 +102,17 @@ module Database.Bloodhound.Types
        , DocVersion
        , ExternalDocVersion(..)
        , VersionControl(..)
-       , DocumentParent(..)
+       , JoinRelation(..)
        , IndexDocumentSettings(..)
        , Query(..)
+       , Count(..)
        , Search(..)
        , SearchType(..)
        , SearchResult(..)
+       , CountResult(..)
        , ScrollId(..)
+       , HitsTotalRelation(..)
+       , HitsTotal(..)
        , SearchHits(..)
        , TrackSortScores
        , From(..)
@@ -153,8 +157,7 @@ module Database.Bloodhound.Types
        , ScriptFieldValue
        , Script(..)
        , ScriptLanguage(..)
-       , ScriptInline(..)
-       , ScriptId(..)
+       , ScriptSource(..)
        , ScriptParams(..)
        , ScriptParamName
        , ScriptParamValue
@@ -165,8 +168,7 @@ module Database.Bloodhound.Types
        , ForceMergeIndexSettings(..)
        , defaultForceMergeIndexSettings
        , TemplateName(..)
-       , TemplatePattern(..)
-       , MappingName(..)
+       , IndexPattern(..)
        , DocId(..)
        , CacheName(..)
        , CacheKey(..)
@@ -215,7 +217,10 @@ module Database.Bloodhound.Types
        , RangeQuery(..)
        , RegexpQuery(..)
        , QueryString(..)
-       , TemplateQueryInline(..)
+       , SearchTemplateId(..)
+       , SearchTemplateSource(..)
+       , SearchTemplate(..)
+       , GetTemplateScript(..)
        , TemplateQueryKeyValuePairs(..)
        , WildcardQuery(..)
        , BooleanOperator(..)
@@ -238,10 +243,14 @@ module Database.Bloodhound.Types
        , Fuzziness(..)
        , IgnoreTermFrequency(..)
        , MaxQueryTerms(..)
+       , AggregateParentScore(..)
+       , IgnoreUnmapped(..)
+       , MinChildren(..)
+       , MaxChildren(..)
        , ScoreType(..)
        , Score
        , Cache
-       , TypeName(..)
+       , RelationName(..)
        , BoostTerms(..)
        , MaxWordLength(..)
        , MinWordLength(..)
@@ -300,7 +309,6 @@ module Database.Bloodhound.Types
        , NodeDataPathStats(..)
        , NodeFSTotalStats(..)
        , NodeNetworkStats(..)
-       , NodeThreadPoolsStats(..)
        , NodeThreadPoolStats(..)
        , NodeJVMStats(..)
        , JVMBufferPoolStats(..)
@@ -321,7 +329,6 @@ module Database.Bloodhound.Types
        , MacAddress(..)
        , NetworkInterfaceName(..)
        , NodeNetworkInterface(..)
-       , NodeThreadPoolsInfo(..)
        , NodeThreadPoolInfo(..)
        , ThreadPoolSize(..)
        , ThreadPoolType(..)
@@ -428,6 +435,7 @@ import           Database.Bloodhound.Internal.Newtypes
 import           Database.Bloodhound.Internal.Query
 import           Database.Bloodhound.Internal.Sort
 import           Database.Bloodhound.Internal.Suggest
+import qualified Data.HashMap.Strict as HM
 
 {-| 'unpackId' is a silly convenience function that gets used once.
 -}
@@ -453,7 +461,15 @@ data Search = Search { queryBody       :: Maybe Query
                      , suggestBody     :: Maybe Suggest -- ^ Only one Suggestion request / response per Search is supported.
                      } deriving (Eq, Show)
 
+data Count = Count { countQueryBody       :: Maybe Query
+                    , countSearchType      :: SearchType
+                     } deriving (Eq, Show)
 
+instance ToJSON Count where
+  toJSON (Count mquery _) =
+    omitNulls [ "query" .= mquery]
+
+  
 instance ToJSON Search where
   toJSON (Search mquery sFilter sort searchAggs
           highlight sTrackSortScores sFrom sSize _ sAfter sFields
@@ -482,6 +498,15 @@ instance ToJSON Search where
 data SearchType = SearchTypeQueryThenFetch
                 | SearchTypeDfsQueryThenFetch
   deriving (Eq, Show)
+
+instance ToJSON SearchType where
+  toJSON SearchTypeQueryThenFetch = String "query_then_fetch"
+  toJSON SearchTypeDfsQueryThenFetch = String "dfs_query_then_fetch"
+
+instance FromJSON SearchType where
+  parseJSON (String "query_then_fetch") = pure $ SearchTypeQueryThenFetch
+  parseJSON (String "dfs_query_then_fetch") = pure $ SearchTypeDfsQueryThenFetch
+  parseJSON _          = empty
 
 data Source =
     NoSource
@@ -515,6 +540,18 @@ newtype Pattern = Pattern Text deriving (Eq, Read, Show)
 instance ToJSON Pattern where
   toJSON (Pattern pattern) = toJSON pattern
 
+data CountResult a =
+  CountResult { crCount         :: Int
+               , crShards       :: ShardResult
+               }
+  deriving (Eq, Show)
+
+instance (FromJSON a) => FromJSON (CountResult a) where
+  parseJSON (Object v) = CountResult <$>
+                         v .:  "count"         <*>
+                         v .:  "_shards"
+  parseJSON _          = empty
+  
 data SearchResult a =
   SearchResult { took         :: Int
                , timedOut     :: Bool
@@ -542,3 +579,104 @@ instance (FromJSON a) => FromJSON (SearchResult a) where
 newtype ScrollId =
   ScrollId Text
   deriving (Eq, Show, Ord, ToJSON, FromJSON)
+
+newtype SearchTemplateId = SearchTemplateId Text deriving (Eq, Show)
+
+instance ToJSON SearchTemplateId where
+  toJSON (SearchTemplateId x) = toJSON x
+
+newtype SearchTemplateSource = SearchTemplateSource Text deriving (Eq, Show)
+
+instance ToJSON SearchTemplateSource where
+  toJSON (SearchTemplateSource x) = toJSON x
+
+instance FromJSON SearchTemplateSource where
+  parseJSON (String s) = pure $ SearchTemplateSource s
+  parseJSON _          = empty
+
+data ExpandWildcards = ExpandWildcardsAll
+  | ExpandWildcardsOpen
+  | ExpandWildcardsClosed
+  | ExpandWildcardsNone
+  deriving (Eq, Show)
+
+instance ToJSON ExpandWildcards where
+  toJSON ExpandWildcardsAll = String "all"
+  toJSON ExpandWildcardsOpen = String "open"
+  toJSON ExpandWildcardsClosed = String "closed"
+  toJSON ExpandWildcardsNone = String "none"
+
+instance FromJSON ExpandWildcards where
+  parseJSON (String "all") = pure $ ExpandWildcardsAll
+  parseJSON (String "open") = pure $ ExpandWildcardsOpen
+  parseJSON (String "closed") = pure $ ExpandWildcardsClosed
+  parseJSON (String "none") = pure $ ExpandWildcardsNone
+  parseJSON _          = empty
+
+data TimeUnits = TimeUnitDays 
+  | TimeUnitHours
+  | TimeUnitMinutes
+  | TimeUnitSeconds
+  | TimeUnitMilliseconds
+  | TimeUnitMicroseconds
+  | TimeUnitNanoseconds
+  deriving (Eq, Show)
+
+instance ToJSON TimeUnits where
+  toJSON TimeUnitDays = String "d"
+  toJSON TimeUnitHours = String "h"
+  toJSON TimeUnitMinutes = String "m"
+  toJSON TimeUnitSeconds = String "s"
+  toJSON TimeUnitMilliseconds = String "ms"
+  toJSON TimeUnitMicroseconds = String "micros"
+  toJSON TimeUnitNanoseconds = String "nanos"
+
+instance FromJSON TimeUnits where
+  parseJSON (String "d") = pure $ TimeUnitDays
+  parseJSON (String "h") = pure $ TimeUnitHours
+  parseJSON ( String "m") = pure $ TimeUnitMinutes
+  parseJSON (String "s") = pure $ TimeUnitSeconds
+  parseJSON (String "ms") = pure $ TimeUnitMilliseconds
+  parseJSON (String "micros") = pure $ TimeUnitMicroseconds
+  parseJSON (String "nanos") = pure $ TimeUnitNanoseconds
+  parseJSON _          = empty
+
+data SearchTemplate =
+  SearchTemplate {
+      searchTemplate                      :: Either SearchTemplateId SearchTemplateSource,
+      params                              :: TemplateQueryKeyValuePairs,
+      explainSearchTemplate               :: Maybe Bool,
+      profileSearchTemplate               :: Maybe Bool
+    }
+  deriving (Eq, Show)
+
+instance ToJSON SearchTemplate where
+  toJSON SearchTemplate{..} = omitNulls [ 
+    either ("id" .=) ("source" .=) searchTemplate
+    , "params" .= params
+    , "explain" .= explainSearchTemplate
+    , "profile" .= profileSearchTemplate
+    ]
+
+data GetTemplateScript = GetTemplateScript {
+    getTemplateScriptLang      :: Maybe Text
+    , getTemplateScriptSource  :: Maybe SearchTemplateSource
+    , getTemplateScriptOptions :: Maybe (HM.HashMap Text Text)
+    , getTemplateScriptId      :: Text
+    , getTemplateScriptFound   :: Bool
+  } deriving (Eq, Show)
+
+instance FromJSON GetTemplateScript where
+  parseJSON (Object v) = do
+    script <- v .:? "script"
+    maybe
+      (GetTemplateScript Nothing Nothing Nothing <$> v .: "_id" <*> v .: "found")
+      (\s -> GetTemplateScript <$>
+        s .:? "lang"    <*>
+        s .:? "source"  <*>
+        s .:? "options" <*>
+        v .: "_id"          <*>
+        v .: "found"
+      )
+      script
+  parseJSON _          = empty
