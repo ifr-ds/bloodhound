@@ -34,23 +34,11 @@ data Aggregation = TermsAgg TermsAggregation
                  | MissingAgg MissingAggregation
                  | TopHitsAgg TopHitsAggregation
                  | StatsAgg StatisticsAggregation
+                 | CompositeAgg CompositeAggregation
   deriving (Eq, Show)
 
 instance ToJSON Aggregation where
-  toJSON (TermsAgg (TermsAggregation term include exclude order minDocCount size shardSize collectMode executionHint termAggs)) =
-    omitNulls ["terms" .= omitNulls [ toJSON' term,
-                                      "include"        .= include,
-                                      "exclude"        .= exclude,
-                                      "order"          .= order,
-                                      "min_doc_count"  .= minDocCount,
-                                      "size"           .= size,
-                                      "shard_size"     .= shardSize,
-                                      "collect_mode"   .= collectMode,
-                                      "execution_hint" .= executionHint
-                                    ],
-               "aggs"  .= termAggs ]
-    where
-      toJSON' x = case x of { Left y -> "field" .= y;  Right y -> "script" .= y }
+  toJSON (TermsAgg agg) = toJSON agg
 
   toJSON (CardinalityAgg (CardinalityAggregation field precisionThreshold)) =
     object ["cardinality" .= omitNulls [ "field"              .= field,
@@ -97,6 +85,11 @@ instance ToJSON Aggregation where
       stType | typ == Basic = "stats"
              | otherwise = "extended_stats"
 
+  toJSON (CompositeAgg CompositeAggregation{..}) =
+    object [ "composite" .= omitNulls [ "sources" .= compositeSources
+                                      , "size" .= compositeSize
+                                      , "after" .= compositeAfter ] ]
+
 data TopHitsAggregation = TopHitsAggregation
   { taFrom :: Maybe From
   , taSize :: Maybe Size
@@ -119,6 +112,22 @@ data TermsAggregation = TermsAggregation
   , termExecutionHint :: Maybe ExecutionHint
   , termAggs          :: Maybe Aggregations
   } deriving (Eq, Show)
+
+instance ToJSON TermsAggregation where
+  toJSON (TermsAggregation term include exclude order minDocCount size shardSize collectMode executionHint termAggs) =
+    omitNulls ["terms" .= omitNulls [ toJSON' term,
+                                      "include"        .= include,
+                                      "exclude"        .= exclude,
+                                      "order"          .= order,
+                                      "min_doc_count"  .= minDocCount,
+                                      "size"           .= size,
+                                      "shard_size"     .= shardSize,
+                                      "collect_mode"   .= collectMode,
+                                      "execution_hint" .= executionHint
+                                    ],
+               "aggs"  .= termAggs ]
+    where
+      toJSON' x = case x of { Left y -> "field" .= y;  Right y -> "script" .= y }
 
 data CardinalityAggregation = CardinalityAggregation
   { cardinalityField   :: FieldName,
@@ -182,6 +191,18 @@ data StatsType
   = Basic
   | Extended
   deriving (Eq, Show)
+
+data CompositeAggregation = CompositeAggregation
+  { compositeSources :: [CompositeSource]
+  , compositeAfter :: Maybe Value
+  , compositeSize :: Maybe Int }
+  deriving (Eq, Show)
+
+-- TODO add other methods
+data CompositeSource = CompositeTerms Text TermsAggregation deriving (Eq, Show)
+
+instance ToJSON CompositeSource where
+  toJSON (CompositeTerms name agg) = object [ name .= agg ]
 
 mkTermsAggregation :: Text -> TermsAggregation
 mkTermsAggregation t =

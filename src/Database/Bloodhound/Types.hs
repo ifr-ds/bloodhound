@@ -384,6 +384,8 @@ module Database.Bloodhound.Types
        , CardinalityAggregation(..)
        , DateHistogramAggregation(..)
        , DateRangeAggregation(..)
+       , CompositeAggregation(..)
+       , CompositeSource(..)
        , DateRangeAggRange(..)
        , DateMathExpr(..)
        , DateMathAnchor(..)
