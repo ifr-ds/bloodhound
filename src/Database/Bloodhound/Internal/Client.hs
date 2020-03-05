@@ -611,20 +611,6 @@ data UpsertPayload
   | UpsertScript Bool Script Value
   deriving (Eq, Show)
 
-data UpsertActionMetadata
-  = UA_RetryOnConflict Int
-  | UA_Version Int
-  deriving (Eq, Show)
-
-buildUpsertActionMetadata :: UpsertActionMetadata -> Pair
-buildUpsertActionMetadata (UA_RetryOnConflict i) = "retry_on_conflict"  .= i
-buildUpsertActionMetadata (UA_Version i)         = "_version"           .= i
-
-data UpsertPayload
-  = UpsertDoc Value
-  | UpsertScript Bool Script Value
-  deriving (Eq, Show)
-
 data AllocationPolicy = AllocAll
                       -- ^ Allows shard allocation for all shards.
                       | AllocPrimaries
