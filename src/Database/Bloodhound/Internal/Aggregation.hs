@@ -235,10 +235,23 @@ data Bucket a = Bucket
   { buckets :: [a]
   } deriving (Read, Show)
 
+
 instance (FromJSON a) => FromJSON (Bucket a) where
   parseJSON (Object v) = Bucket <$>
                          v .: "buckets"
   parseJSON _ = mempty
+
+data ScrollBucket a = ScrollBucket
+  { scrollBuckets :: [a]
+  , scrollAfterKey :: Maybe Value
+  } deriving (Read, Show)
+
+instance (FromJSON a) => FromJSON (ScrollBucket a) where
+  parseJSON (Object v) = ScrollBucket <$>
+                         v .: "buckets" <*>
+                         v .:? "after_key"
+  parseJSON _ = mempty
+
 
 data BucketValue = TextValue Text
                  | ScientificValue Scientific
@@ -414,6 +427,10 @@ toAggResult :: (FromJSON a) => Text -> AggregationResults -> Maybe a
 toAggResult t a = M.lookup t a >>= deserialize
   where deserialize = parseMaybe parseJSON
 
+toCompositeResult :: (FromJSON a) => Text -> AggregationResults
+                  -> Maybe (Bucket (CompositeResult a))
+toCompositeResult = toAggResult
+
 -- Try to get an AggregationResults when we don't know the
 -- field name. We filter out the known keys to try to minimize the noise.
 getNamedSubAgg :: Object -> [Text] -> Maybe AggregationResults
@@ -422,6 +439,16 @@ getNamedSubAgg o knownKeys = maggRes
         maggRes
           | HM.null unknownKeys = Nothing
           | otherwise           = Just . M.fromList $ HM.toList unknownKeys
+
+data CompositeResult a = CompositeResult
+  { compositeKey :: a
+  , compositeDocCount :: Int } deriving (Show)
+
+instance FromJSON a => FromJSON (CompositeResult a) where
+  parseJSON = withObject "CompositeParse" parse
+    where parse v = CompositeResult                 <$>
+                    v .:  "key"                     <*>
+                    v .:  "doc_count"
 
 data MissingResult = MissingResult
   { missingDocCount :: Int

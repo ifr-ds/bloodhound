@@ -50,6 +50,7 @@ module Database.Bloodhound.Types
        , toMissing
        , toTerms
        , toDateHistogram
+       , toCompositeResult
        , toTopHits
        , omitNulls
        , BH(..)
@@ -386,6 +387,7 @@ module Database.Bloodhound.Types
        , DateRangeAggregation(..)
        , CompositeAggregation(..)
        , CompositeSource(..)
+       , CompositeResult(..)
        , DateRangeAggRange(..)
        , DateMathExpr(..)
        , DateMathAnchor(..)
