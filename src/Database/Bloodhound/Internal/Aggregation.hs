@@ -428,7 +428,7 @@ toAggResult t a = M.lookup t a >>= deserialize
   where deserialize = parseMaybe parseJSON
 
 toCompositeResult :: (FromJSON a) => Text -> AggregationResults
-                  -> Maybe (Bucket (CompositeResult a))
+                  -> Maybe (ScrollBucket (CompositeResult a))
 toCompositeResult = toAggResult
 
 -- Try to get an AggregationResults when we don't know the

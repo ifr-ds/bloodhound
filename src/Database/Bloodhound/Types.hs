@@ -374,9 +374,10 @@ module Database.Bloodhound.Types
 
        , Aggregation(..)
        , Aggregations
-       , AggregationResults
+       , AggregationResults(..)
        , BucketValue(..)
        , Bucket(..)
+       , ScrollBucket(..)
        , BucketAggregation(..)
        , TermsAggregation(..)
        , MissingAggregation(..)
