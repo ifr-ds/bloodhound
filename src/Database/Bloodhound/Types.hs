@@ -51,7 +51,9 @@ module Database.Bloodhound.Types
        , toTerms
        , toDateHistogram
        , toCompositeResult
+       , toPercentileResult
        , toTopHits
+       , toAggResult
        , omitNulls
        , BH(..)
        , runBH
@@ -378,8 +380,11 @@ module Database.Bloodhound.Types
        , BucketValue(..)
        , Bucket(..)
        , ScrollBucket(..)
+       , FieldOrScript(..)
        , BucketAggregation(..)
        , TermsAggregation(..)
+       , RangeAggregation(..)
+       , RangeSpec(..)
        , MissingAggregation(..)
        , ValueCountAggregation(..)
        , FilterAggregation(..)
@@ -387,8 +392,10 @@ module Database.Bloodhound.Types
        , DateHistogramAggregation(..)
        , DateRangeAggregation(..)
        , CompositeAggregation(..)
+       , PercentileAggregation(..)
        , CompositeSource(..)
        , CompositeResult(..)
+       , PercentileResult(..)
        , DateRangeAggRange(..)
        , DateMathExpr(..)
        , DateMathAnchor(..)

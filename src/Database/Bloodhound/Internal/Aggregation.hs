@@ -27,6 +27,7 @@ mkAggregations name aggregation = M.insert name aggregation emptyAggregations
 
 data Aggregation = TermsAgg TermsAggregation
                  | CardinalityAgg CardinalityAggregation
+                 | RangeAgg RangeAggregation
                  | DateHistogramAgg DateHistogramAggregation
                  | ValueCountAgg ValueCountAggregation
                  | FilterAgg FilterAggregation
@@ -36,6 +37,7 @@ data Aggregation = TermsAgg TermsAggregation
                  | StatsAgg StatisticsAggregation
                  | CompositeAgg CompositeAggregation
                  | AverageAgg AverageAggregation
+                 | PercentileAgg PercentileAggregation
   deriving (Eq, Show)
 
 instance ToJSON Aggregation where
@@ -92,6 +94,8 @@ instance ToJSON Aggregation where
                                       , "after" .= compositeAfter ] ]
 
   toJSON (AverageAgg agg) = toJSON agg
+  toJSON (PercentileAgg agg) = toJSON agg
+  toJSON (RangeAgg agg) = toJSON agg
 
 data FieldOrScript = FieldValue Text | ScriptValue Text deriving (Eq, Show)
 
@@ -216,6 +220,36 @@ instance ToJSON AverageAggregation where
     omitNulls [ "avg" .= Object (toObject averageField <> missing) ]
     where
       missing = toObject . omitNulls $ [ "missing" .= averageMissing ]
+
+data PercentileAggregation = PercentileAggregation
+  { percentileField :: FieldOrScript
+  , percentilePercents :: Maybe [Double] } deriving (Eq, Show)
+
+instance ToJSON PercentileAggregation where
+  toJSON PercentileAggregation{..} =
+    omitNulls [ "percentiles" .= Object (toObject percentileField <> missing) ]
+    where
+      missing = toObject . omitNulls $ [ "percents" .= percentilePercents ]
+
+data RangeAggregation = RangeAggregation
+  { rangeField :: FieldOrScript
+  , rangeRanges :: [RangeSpec] } deriving (Eq, Show)
+
+instance ToJSON RangeAggregation where
+  toJSON RangeAggregation{..} =
+    omitNulls [ "range" .= Object (toObject rangeField <> ranges) ]
+    where
+      ranges = toObject . omitNulls $ [ "ranges" .= rangeRanges ]
+
+data RangeSpec = RangeSpec
+  { rangeSpecFrom :: Double
+  , rangeSpecTo :: Double
+  , rangeSpecKey :: Maybe Text } deriving (Eq, Show)
+
+instance ToJSON RangeSpec where
+  toJSON RangeSpec{..} = omitNulls [ "key" .= rangeSpecKey
+                                   , "from" .= rangeSpecFrom
+                                   , "to" .= rangeSpecTo ]
 
 toObject :: ToJSON a => a -> Object
 toObject a = case toJSON a of
@@ -454,6 +488,15 @@ toAggResult t a = M.lookup t a >>= deserialize
 toCompositeResult :: (FromJSON a) => Text -> AggregationResults
                   -> Maybe (ScrollBucket (CompositeResult a))
 toCompositeResult = toAggResult
+
+newtype PercentileResult = PercentileResult { percentileResult :: HM.HashMap Text Double }
+                         deriving (Show)
+
+instance FromJSON PercentileResult where
+  parseJSON = withObject "PercentileResult" $ \o -> PercentileResult <$> o .: "values"
+
+toPercentileResult :: Text -> AggregationResults -> Maybe PercentileResult
+toPercentileResult = toAggResult
 
 -- Try to get an AggregationResults when we don't know the
 -- field name. We filter out the known keys to try to minimize the noise.
