@@ -35,6 +35,7 @@ data Aggregation = TermsAgg TermsAggregation
                  | TopHitsAgg TopHitsAggregation
                  | StatsAgg StatisticsAggregation
                  | CompositeAgg CompositeAggregation
+                 | AverageAgg AverageAggregation
   deriving (Eq, Show)
 
 instance ToJSON Aggregation where
@@ -89,6 +90,14 @@ instance ToJSON Aggregation where
     object [ "composite" .= omitNulls [ "sources" .= compositeSources
                                       , "size" .= compositeSize
                                       , "after" .= compositeAfter ] ]
+
+  toJSON (AverageAgg agg) = toJSON agg
+
+data FieldOrScript = FieldValue Text | ScriptValue Text deriving (Eq, Show)
+
+instance ToJSON FieldOrScript where
+  toJSON (FieldValue f) = object [ "field" .= f ]
+  toJSON (ScriptValue src) = object [ "script" .= object [ "source" .= src ]]
 
 data TopHitsAggregation = TopHitsAggregation
   { taFrom :: Maybe From
@@ -197,6 +206,21 @@ data CompositeAggregation = CompositeAggregation
   , compositeAfter :: Maybe Value
   , compositeSize :: Maybe Int }
   deriving (Eq, Show)
+
+data AverageAggregation = AverageAggregation
+  { averageField :: FieldOrScript
+  , averageMissing :: Maybe Value } deriving (Eq, Show)
+
+instance ToJSON AverageAggregation where
+  toJSON AverageAggregation{..} =
+    omitNulls [ "avg" .= Object (toObject averageField <> missing) ]
+    where
+      missing = toObject . omitNulls $ [ "missing" .= averageMissing ]
+
+toObject :: ToJSON a => a -> Object
+toObject a = case toJSON a of
+  Object o -> o
+  _        -> error "toObject: value isn't an Object"
 
 -- TODO add other methods
 data CompositeSource = CompositeTerms Text TermsAggregation deriving (Eq, Show)
