@@ -507,6 +507,11 @@ getNamedSubAgg o knownKeys = maggRes
           | HM.null unknownKeys = Nothing
           | otherwise           = Just . M.fromList $ HM.toList unknownKeys
 
+data MetricResult = MetricResult { metricValue :: Double } deriving (Show)
+
+instance FromJSON MetricResult where
+  parseJSON = withObject "MetricResult" $ \o -> MetricResult <$> o .: "value"
+
 data CompositeResult a = CompositeResult
   { compositeKey :: a
   , compositeDocCount :: Int } deriving (Show)

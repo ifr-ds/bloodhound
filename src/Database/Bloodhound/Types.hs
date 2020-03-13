@@ -377,10 +377,12 @@ module Database.Bloodhound.Types
        , Aggregation(..)
        , Aggregations
        , AggregationResults(..)
+       , MetricResult(..)
        , BucketValue(..)
        , Bucket(..)
        , ScrollBucket(..)
        , FieldOrScript(..)
+       , AverageAggregation(..)
        , BucketAggregation(..)
        , TermsAggregation(..)
        , RangeAggregation(..)
