@@ -322,10 +322,12 @@ instance FromJSON BucketValue where
   parseJSON _          = mempty
 
 data TermInclusion = TermInclusion Text
+                   | TermList [Text]
                    | TermPattern Text Text deriving (Eq, Show)
 
 instance ToJSON TermInclusion where
   toJSON (TermInclusion x) = toJSON x
+  toJSON (TermList x) = toJSON x
   toJSON (TermPattern pattern flags) =
     omitNulls [ "pattern" .= pattern
               , "flags"   .= flags]
