@@ -27,6 +27,7 @@ mkAggregations name aggregation = M.insert name aggregation emptyAggregations
 
 data Aggregation = TermsAgg TermsAggregation
                  | CardinalityAgg CardinalityAggregation
+                 | CumulativeCardinalityAgg CumulativeCardinalityAggregation
                  | RangeAgg RangeAggregation
                  | DateHistogramAgg DateHistogramAggregation
                  | ValueCountAgg ValueCountAggregation
@@ -47,6 +48,12 @@ instance ToJSON Aggregation where
     object ["cardinality" .= omitNulls [ "field"              .= field,
                                          "precisionThreshold" .= precisionThreshold
                                        ]
+           ]
+  
+  toJSON (CumulativeCardinalityAgg (CumulativeCardinalityAggregation bucketsPath format)) =
+    object ["cumulative_cardinality" .= omitNulls [ "buckets_path" .= bucketsPath,
+                                                    "format" .= format
+                                                  ]
            ]
 
   toJSON (DateHistogramAgg
@@ -145,6 +152,11 @@ instance ToJSON TermsAggregation where
 data CardinalityAggregation = CardinalityAggregation
   { cardinalityField   :: FieldName,
     precisionThreshold :: Maybe Int
+  } deriving (Eq, Show)
+
+data CumulativeCardinalityAggregation = CumulativeCardinalityAggregation
+  { ccaBucketsPath   :: Text,
+    ccaFormat :: Maybe Text
   } deriving (Eq, Show)
 
 data DateHistogramAggregation = DateHistogramAggregation
@@ -275,6 +287,9 @@ mkDateHistogram t i = DateHistogramAggregation t i Nothing Nothing Nothing Nothi
 
 mkCardinalityAggregation :: FieldName -> CardinalityAggregation
 mkCardinalityAggregation t = CardinalityAggregation t Nothing
+  
+mkCumulativeCardinalityAggregation :: Text -> CumulativeCardinalityAggregation
+mkCumulativeCardinalityAggregation t = CumulativeCardinalityAggregation t Nothing
 
 mkStatsAggregation :: FieldName -> StatisticsAggregation
 mkStatsAggregation = StatisticsAggregation Basic
