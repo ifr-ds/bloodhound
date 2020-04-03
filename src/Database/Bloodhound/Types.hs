@@ -43,6 +43,7 @@ module Database.Bloodhound.Types
        , mkTermsScriptAggregation
        , mkDateHistogram
        , mkCardinalityAggregation
+       , mkCumulativeCardinalityAggregation
        , mkDocVersion
        , mkStatsAggregation
        , mkExtendedStatsAggregation
@@ -391,6 +392,7 @@ module Database.Bloodhound.Types
        , ValueCountAggregation(..)
        , FilterAggregation(..)
        , CardinalityAggregation(..)
+       , CumulativeCardinalityAggregation(..)
        , DateHistogramAggregation(..)
        , DateRangeAggregation(..)
        , CompositeAggregation(..)
