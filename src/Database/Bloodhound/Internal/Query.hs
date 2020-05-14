@@ -69,8 +69,7 @@ instance ToJSON Query where
   toJSON (QueryQueryStringQuery qQueryStringQuery) =
     object [ "query_string" .= qQueryStringQuery ]
 
-  toJSON (QueryMatchQuery matchQuery) =
-    object [ "match" .= matchQuery ]
+  toJSON (QueryMatchQuery matchQuery) = toJSON matchQuery
 
   toJSON (QueryMultiMatchQuery multiMatchQuery) =
       toJSON multiMatchQuery
@@ -860,16 +859,15 @@ data MatchQuery = MatchQuery
 instance ToJSON MatchQuery where
   toJSON (MatchQuery (FieldName fieldName)
           (QueryString mqQueryString) booleanOperator
-          zeroTermsQuery cutoffFrequency matchQueryType
+          zeroTermsQuery cutoffFrequency Nothing
           analyzer maxExpansions lenient boost
           minShouldMatch mqFuzziness
          ) =
-    object [ fieldName .= omitNulls base ]
+    object [ "match" .= object [ fieldName .= omitNulls base ] ]
     where base = [ "query" .= mqQueryString
                  , "operator" .= booleanOperator
                  , "zero_terms_query" .= zeroTermsQuery
                  , "cutoff_frequency" .= cutoffFrequency
-                 , "type" .= matchQueryType
                  , "analyzer" .= analyzer
                  , "max_expansions" .= maxExpansions
                  , "lenient" .= lenient
@@ -877,6 +875,23 @@ instance ToJSON MatchQuery where
                  , "minimum_should_match" .= minShouldMatch
                  , "fuzziness" .= mqFuzziness
                  ]
+  toJSON (MatchQuery (FieldName fieldName)
+          (QueryString mqQueryString) _
+          zeroTermsQuery _ (Just MatchPhrase)
+          analyzer _ _ _
+          _ _
+         ) =
+    object [ "match_phrase" .= object [ fieldName .= omitNulls base ] ]
+    where base = [ "query" .= mqQueryString
+                 , "zero_terms_query" .= zeroTermsQuery
+                 , "analyzer" .= analyzer
+                 ]
+  toJSON (MatchQuery (FieldName fieldName)
+          (QueryString mqQueryString) _
+          zeroTermsQuery _ _
+          analyzer _ _ _
+          _ _
+         ) = error "Not yet implemented"
 
 instance FromJSON MatchQuery where
   parseJSON = withObject "MatchQuery" parse
