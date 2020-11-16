@@ -39,6 +39,7 @@ data Aggregation = TermsAgg TermsAggregation
                  | CompositeAgg CompositeAggregation
                  | AverageAgg AverageAggregation
                  | PercentileAgg PercentileAggregation
+                 | ScriptMetricAgg ScriptMetricAggregation
   deriving (Eq, Show)
 
 instance ToJSON Aggregation where
@@ -103,6 +104,7 @@ instance ToJSON Aggregation where
   toJSON (AverageAgg agg) = toJSON agg
   toJSON (PercentileAgg agg) = toJSON agg
   toJSON (RangeAgg agg) = toJSON agg
+  toJSON (ScriptMetricAgg agg) = toJSON agg
 
 data FieldOrScript = FieldValue Text | ScriptValue Text deriving (Eq, Show)
 
@@ -170,6 +172,21 @@ data DateHistogramAggregation = DateHistogramAggregation
   , datePostOffset :: Maybe Text
   , dateAggs       :: Maybe Aggregations
   } deriving (Eq, Show)
+
+data ScriptMetricAggregation = ScriptMetricAggregation
+  { scriptMetricInit    :: Text
+  , scriptMetricMap     :: Text
+  , scriptMetricCombine :: Text
+  , scriptMetricReduce  :: Text } deriving (Eq, Show)
+
+instance ToJSON ScriptMetricAggregation where
+  toJSON ScriptMetricAggregation{..} =
+    object [ "scripted_metric" .= 
+      object [ "init_script" .= scriptMetricInit
+             , "map_script" .= scriptMetricMap
+             , "combine_script" .= scriptMetricCombine
+             , "reduce_script" .= scriptMetricReduce ]
+    ]
 
 data DateRangeAggregation = DateRangeAggregation
   { draField  :: FieldName

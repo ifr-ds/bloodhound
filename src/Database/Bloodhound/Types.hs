@@ -397,6 +397,7 @@ module Database.Bloodhound.Types
        , DateRangeAggregation(..)
        , CompositeAggregation(..)
        , PercentileAggregation(..)
+       , ScriptMetricAggregation(..)
        , CompositeSource(..)
        , CompositeResult(..)
        , PercentileResult(..)
